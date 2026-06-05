@@ -5,8 +5,8 @@
 
 import type { FaceEmbedding, Identity, MatchResult } from '../types/face';
 
-export const DEFAULT_MATCH_THRESHOLD = 0.992; // Strictly tuned for MobileFaceNet
-export const EMBEDDING_DIM = 192;
+export const DEFAULT_MATCH_THRESHOLD = 0.985; // Strict threshold for Geometric Euclidean distance
+export const EMBEDDING_DIM = 11; // 11-dimensional geometric footprint
 
 export function vectorNorm(v: Float32Array): number {
   let sum = 0;
@@ -37,11 +37,23 @@ export function dotProduct(a: Float32Array, b: Float32Array): number {
   return sum;
 }
 
+export function euclideanDistance(a: Float32Array, b: Float32Array): number {
+  if (a.length !== b.length) {
+    throw new Error(`Dimension mismatch: ${a.length} vs ${b.length}`);
+  }
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) {
+    const diff = a[i] - b[i];
+    sum += diff * diff;
+  }
+  return Math.sqrt(sum);
+}
+
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  const normA = vectorNorm(a);
-  const normB = vectorNorm(b);
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct(a, b) / (normA * normB);
+  // For geometric footprints, Euclidean distance is much more discriminative than pure Cosine angle.
+  // We convert it to a 0-1 similarity score to maintain compatibility with the rest of the app.
+  const dist = euclideanDistance(a, b);
+  return 1 / (1 + dist);
 }
 
 export function searchIdentity(
